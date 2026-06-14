@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finance Tracker — Team Edition</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --primary:#1a56db; --primary-light:#e8efff;
+  --success:#0d9f6e; --success-light:#d5f0e8;
+  --danger:#e02424;  --danger-light:#fde8e8;
+  --warning:#c27803; --warning-light:#fdf3d7;
+  --gray-50:#f9fafb; --gray-100:#f3f4f6; --gray-200:#e5e7eb;
+  --gray-300:#d1d5db; --gray-500:#6b7280; --gray-700:#374151; --gray-900:#111827;
+  --radius:10px;
+  --shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --shadow-md:0 4px 6px -1px rgba(0,0,0,.1);
+  /* Statement colours */
+  --stmt-in-bg:#FFFF00; --stmt-in-text:#000;
+  --stmt-out-bg:#FF6B6B; --stmt-out-text:#000;
+  --stmt-total-bg:#AEC6CF; --stmt-total-text:#000;
+  --stmt-opening-bg:#e8efff; --stmt-opening-text:#1a56db;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--gray-50);color:var(--gray-900);min-height:100vh}
+
+/* Header */
+header{background:#fff;border-bottom:1px solid var(--gray-200);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--primary)}
+.logo-icon{width:32px;height:32px;background:var(--primary);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px}
+.header-pills{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pill{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.pill-warn{background:var(--warning-light);color:var(--warning)}
+.pill-info{background:var(--primary-light);color:var(--primary)}
+
+/* Nav */
+nav{background:#fff;border-bottom:1px solid var(--gray-200);padding:0 20px;display:flex;gap:2px;overflow-x:auto}
+.nav-btn{padding:13px 15px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:500;color:var(--gray-500);border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap}
+.nav-btn:hover{color:var(--primary)}
+.nav-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+
+/* Main */
+main{max-width:1300px;margin:0 auto;padding:24px 20px}
+
+/* Cards */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:24px}
+.card{background:#fff;border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);border-left:4px solid transparent}
+.card.blue{border-left-color:var(--primary)}.card.green{border-left-color:var(--success)}
+.card.red{border-left-color:var(--danger)}.card.yellow{border-left-color:var(--warning)}
+.card.purple{border-left-color:#7c3aed}
+.card-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--gray-500);margin-bottom:5px}
+.card-value{font-size:22px;font-weight:700;margin-bottom:3px}
+.card-sub{font-size:11px;color:var(--gray-500)}
+.card.blue .card-value{color:var(--primary)}.card.green .card-value{color:var(--success)}
+.card.red .card-value{color:var(--danger)}.card.yellow .card-value{color:var(--warning)}
+.card.purple .card-value{color:#7c3aed}
+
+/* Account balance cards */
+.acc-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-bottom:24px}
+.acc-card{background:#fff;border-radius:var(--radius);padding:18px 20px;box-shadow:var(--shadow);border-top:4px solid var(--primary)}
+.acc-card-bank{font-size:11px;color:var(--gray-500);font-weight:600;text-transform:uppercase;margin-bottom:4px}
+.acc-card-name{font-size:15px;font-weight:700;margin-bottom:8px}
+.acc-card-row{display:flex;justify-content:space-between;font-size:12px;color:var(--gray-500);margin-bottom:3px}
+.acc-card-balance{font-size:20px;font-weight:700;color:var(--success);margin-top:8px}
+.acc-card-balance.negative{color:var(--danger)}
+
+/* Panel */
+.panel{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+.panel-header{padding:14px 18px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.panel-title{font-size:14px;font-weight:700}
+.panel-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:#1748c0}
+.btn-success{background:var(--success);color:#fff}.btn-success:hover{background:#0a8a5c}
+.btn-danger{background:var(--danger);color:#fff;font-size:12px;padding:4px 9px}.btn-danger:hover{background:#c01e1e}
+.btn-warning{background:var(--warning);color:#fff}.btn-warning:hover{background:#a36400}
+.btn-outline{background:#fff;color:var(--gray-700);border:1px solid var(--gray-300)}.btn-outline:hover{background:var(--gray-100)}
+.btn-purple{background:#7c3aed;color:#fff}.btn-purple:hover{background:#6d28d9}
+.btn-sm{padding:4px 9px;font-size:12px}
+
+/* Table */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:var(--gray-50);padding:9px 13px;text-align:left;font-weight:600;color:var(--gray-500);font-size:11px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--gray-200);white-space:nowrap}
+td{padding:10px 13px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--gray-50)}
+
+/* Statement table special rows */
+.stmt-in td{background:var(--stmt-in-bg)!important;color:var(--stmt-in-text);font-weight:500}
+.stmt-out td{background:var(--stmt-out-bg)!important;color:var(--stmt-out-text);font-weight:500}
+.stmt-total td{background:var(--stmt-total-bg)!important;color:var(--stmt-total-text);font-weight:700}
+.stmt-opening td{background:var(--stmt-opening-bg)!important;color:var(--stmt-opening-text);font-weight:700}
+.stmt-in:hover td,.stmt-out:hover td,.stmt-total:hover td,.stmt-opening:hover td{filter:brightness(.96)}
+.text-right{text-align:right}
+.text-center{text-align:center}
+.bal-negative{color:var(--danger)!important}
+.bal-low{color:var(--warning)!important}
+.bal-ok{color:var(--success)!important}
+
+/* Status badges */
+.status{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.status-pending{background:var(--warning-light);color:var(--warning)}
+.status-approved{background:var(--success-light);color:var(--success)}
+.status-rejected{background:var(--danger-light);color:var(--danger)}
+.status-received{background:var(--success-light);color:var(--success)}
+.status-overdue{background:var(--danger-light);color:var(--danger)}
+.status-done{background:var(--success-light);color:var(--success)}
+.status-transfer{background:var(--primary-light);color:var(--primary)}
+.recurring-tag{display:inline-flex;align-items:center;gap:4px;background:var(--primary-light);color:var(--primary);padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:14px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal-head{padding:18px 22px 14px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between}
+.modal-head h3{font-size:15px;font-weight:700}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--gray-500)}
+.modal-body{padding:18px 22px}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--gray-100);display:flex;gap:10px;justify-content:flex-end}
+
+/* Form */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-row.single{grid-template-columns:1fr}
+.form-row.triple{grid-template-columns:1fr 1fr 1fr}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:12px;font-weight:600;color:var(--gray-700)}
+.field input,.field select,.field textarea{border:1px solid var(--gray-300);border-radius:7px;padding:7px 10px;font-size:13px;font-family:inherit;outline:none;transition:border .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,86,219,.1)}
+.field textarea{resize:vertical;min-height:65px}
+.toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.toggle{width:38px;height:20px;background:var(--gray-300);border-radius:10px;position:relative;cursor:pointer;border:none;transition:background .2s;flex-shrink:0}
+.toggle.on{background:var(--primary)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:left .2s}
+.toggle.on::after{left:20px}
+.toggle-label{font-size:13px;font-weight:600;color:var(--gray-700)}
+
+/* Filter bar */
+.filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.filter-bar select,.filter-bar input[type=text],.filter-bar input[type=date]{padding:6px 10px;border:1px solid var(--gray-300);border-radius:7px;font-size:13px;background:#fff}
+
+/* Import */
+.import-area{border:2px dashed var(--gray-300);border-radius:var(--radius);padding:28px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px}
+.import-area:hover,.import-area.drag{border-color:var(--primary);background:var(--primary-light)}
+.import-icon{font-size:34px;margin-bottom:8px}
+.import-title{font-size:14px;font-weight:700;margin-bottom:3px}
+.import-sub{font-size:12px;color:var(--gray-500)}
+#fileInput{display:none}
+.template-note{background:var(--primary-light);border:1px solid #c3d9ff;border-radius:8px;padding:11px 14px;font-size:12px;color:var(--primary);margin-bottom:14px;line-height:1.5}
+
+/* Empty */
+.empty{text-align:center;padding:40px 20px;color:var(--gray-500)}
+.empty-icon{font-size:36px;margin-bottom:10px}
+.empty-title{font-size:14px;font-weight:600;margin-bottom:5px;color:var(--gray-700)}
+
+/* Weekly */
+.week-nav{display:flex;align-items:center;gap:10px}
+.week-title{font-size:13px;font-weight:700;color:var(--gray-700);min-width:210px;text-align:center}
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:14px 16px}
+.day-col{min-height:180px}
+.day-header{text-align:center;padding:5px 3px;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--gray-500);margin-bottom:5px}
+.day-date{font-size:16px;font-weight:700;text-align:center;margin-bottom:6px;color:var(--gray-900)}
+.day-date.today{background:var(--primary);color:#fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:13px}
+.day-item{background:var(--gray-50);border-radius:5px;padding:4px 6px;margin-bottom:4px;font-size:10px;border-left:3px solid var(--primary);line-height:1.3}
+.day-item.collection{border-left-color:var(--success)}
+.day-item.payment{border-left-color:var(--danger)}
+.day-item.transfer{border-left-color:#7c3aed}
+.day-item .item-amount{font-weight:700}
+
+/* Chart */
+.chart-wrap{padding:16px;height:260px}
+
+/* Tabs */
+.tab-section{display:none}.tab-section.active{display:block}
+
+/* Amount colours */
+.amt-in{color:var(--success);font-weight:700}
+.amt-out{color:var(--danger);font-weight:700}
+
+/* Toast */
+#toast{position:fixed;bottom:22px;right:22px;background:var(--gray-900);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;font-weight:600;transform:translateY(70px);opacity:0;transition:all .3s;z-index:300;max-width:300px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.success{background:var(--success)}
+#toast.error{background:var(--danger)}
+
+/* Coverage indicator */
+.coverage-bar{height:8px;border-radius:4px;background:var(--gray-200);margin-top:6px;overflow:hidden}
+.coverage-fill{height:100%;border-radius:4px;background:var(--success);transition:width .4s}
+.coverage-fill.low{background:var(--warning)}
+.coverage-fill.critical{background:var(--danger)}
+
+@media(max-width:640px){
+  .week-grid{grid-template-columns:1fr}
+  .form-row,.form-row.triple{grid-template-columns:1fr}
+  .cards-grid{grid-template-columns:1fr 1fr}
+  nav{gap:0}
+  .nav-btn{padding:11px 10px;font-size:12px}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-icon">₼</div> Finance Tracker</div>
+  <div class="header-pills">
+    <span class="pill pill-warn" id="pendingBadge">0 Pending</span>
+    <span class="pill pill-info" id="totalBalancePill">SAR 0</span>
+    <span style="font-size:12px;color:var(--gray-500)">SAR</span>
+  </div>
+</header>
+
+<nav>
+  <button class="nav-btn active" onclick="showTab('dashboard')">📊 Dashboard</button>
+  <button class="nav-btn" onclick="showTab('statement')">📋 Statement</button>
+  <button class="nav-btn" onclick="showTab('collections')">💰 Collections</button>
+  <button class="nav-btn" onclick="showTab('payments')">💸 Payments</button>
+  <button class="nav-btn" onclick="showTab('accounts')">🏦 Accounts</button>
+  <button class="nav-btn" onclick="showTab('transfers')">🔄 Transfers</button>
+  <button class="nav-btn" onclick="showTab('schedule')">📅 Weekly</button>
+  <button class="nav-btn" onclick="showTab('import')">📤 Import</button>
+</nav>
+
+<main>
+
+<!-- ══════════ DASHBOARD ══════════ -->
+<div class="tab-section active" id="tab-dashboard">
+  <div id="acc-cards-dash" class="acc-cards"></div>
+  <div class="cards-grid">
+    <div class="card blue"><div class="card-label">Expected Collections</div><div class="card-value" id="dc-col">SAR 0</div><div class="card-sub" id="dc-col-c">0 items</div></div>
+    <div class="card green"><div class="card-label">Received</div><div class="card-value" id="dc-recv">SAR 0</div><div class="card-sub" id="dc-recv-c">0 received</div></div>
+    <div class="card red"><div class="card-label">Due Payments</div><div class="card-value" id="dc-pay">SAR 0</div><div class="card-sub" id="dc-pay-c">0 items</div></div>
+    <div class="card yellow"><div class="card-label">Pending Approvals</div><div class="card-value" id="dc-pend">0</div><div class="card-sub">awaiting approval</div></div>
+    <div class="card purple"><div class="card-label">Net Position</div><div class="card-value" id="dc-net">SAR 0</div><div class="card-sub">collections − payments</div></div>
+  </div>
+  <!-- Coverage -->
+  <div class="panel" style="margin-bottom:20px;">
+    <div class="panel-header"><span class="panel-title">💡 Balance Coverage Check</span></div>
+    <div style="padding:16px 20px;" id="coverage-area"></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+    <div class="panel"><div class="panel-header"><span class="panel-title">Cash Flow by Month</span></div><div class="chart-wrap"><canvas id="cashflowChart"></canvas></div></div>
+    <div class="panel"><div class="panel-header"><span class="panel-title">Payments by Category</span></div><div class="chart-wrap"><canvas id="categoryChart"></canvas></div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-header"><span class="panel-title">⏰ Upcoming — Next 7 Days</span></div>
+    <div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Account</th><th>Amount</th><th>Status</th></tr></thead><tbody id="upcoming-tbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- ══════════ STATEMENT ══════════ -->
+<div class="tab-section" id="tab-statement">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">📋 Cash Flow Statement</span>
+      <div class="panel-actions">
+        <div class="filter-bar">
+          <select id="stmt-account" onchange="renderStatement()"><option value="">All Accounts</option></select>
+          <input type="date" id="stmt-from" onchange="renderStatement()" title="From date">
+          <input type="date" id="stmt-to"   onchange="renderStatement()" title="To date">
+          <button class="btn btn-outline btn-sm" onclick="clearStmtFilters()">Clear</button>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="exportStatement()">⬇ Export</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Description</th><th>Account</th>
+          <th class="text-right" style="color:var(--success)">IN (SAR)</th>
+          <th class="text-right" style="color:var(--danger)">OUT (SAR)</th>
+          <th class="text-right">Balance (SAR)</th>
+          <th>Status</th>
+        </tr></thead>
+        <tbody id="stmt-tbody"></tbody>
+      </table>
+    </div>
+    <div id="stmt-empty" class="empty" style="display:none;"><div class="empty-icon">📋</div><div class="empty-title">No transactions found</div></div>
+  </div>
+</div>
+
+<!-- ══════════ COLLECTIONS ══════════ -->
+<div class="tab-section" id="tab-collections">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Expected Collections</span>
+      <div class="panel-actions">
+        <div class="filter-bar">
+          <select id="col-filter-acc" onchange="renderCollections()"><option value="">All Accounts</option></select>
+          <select id="col-filter-status" onchange="renderCollections()"><option value="">All Statuses</option><option value="pending">Pending</option><option value="received">Received</option><option value="overdue">Overdue</option></select>
+          <input type="text" placeholder="Search…" id="col-search" oninput="renderCollections()" style="width:140px;">
+        </div>
+        <button class="btn btn-primary" onclick="openModal('col')">＋ Add</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Source / Client</th><th>Account</th><th>Category</th><th class="text-right">Amount (SAR)</th><th>Notes</th><th>Status</th><th>Actions</th></tr></thead>
+      <tbody id="col-tbody"></tbody>
+    </table></div>
+    <div id="col-empty" class="empty" style="display:none;"><div class="empty-icon">💰</div><div class="empty-title">No collections yet</div></div>
+  </div>
+</div>
+
+<!-- ══════════ PAYMENTS ══════════ -->
+<div class="tab-section" id="tab-payments">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Due Payments</span>
+      <div class="panel-actions">
+        <div class="filter-bar">
+          <select id="pay-filter-acc" onchange="renderPayments()"><option value="">All Accounts</option></select>
+          <select id="pay-filter-status" onchange="renderPayments()"><option value="">All Statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+          <select id="pay-filter-cat" onchange="renderPayments()"><option value="">All Categories</option></select>
+          <input type="text" placeholder="Search…" id="pay-search" oninput="renderPayments()" style="width:130px;">
+        </div>
+        <button class="btn btn-primary" onclick="openModal('pay')">＋ Add</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Vendor / Name</th><th>Account</th><th>Category</th><th class="text-right">Amount (SAR)</th><th>Recurring</th><th>Notes</th><th>Approval</th><th>Actions</th></tr></thead>
+      <tbody id="pay-tbody"></tbody>
+    </table></div>
+    <div id="pay-empty" class="empty" style="display:none;"><div class="empty-icon">💸</div><div class="empty-title">No payments yet</div></div>
+  </div>
+</div>
+
+<!-- ══════════ ACCOUNTS ══════════ -->
+<div class="tab-section" id="tab-accounts">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Bank Accounts</span>
+      <button class="btn btn-primary" onclick="openModal('acc')">＋ Add Account</button>
+    </div>
+    <div id="acc-list-area" style="padding:16px 20px;"></div>
+  </div>
+</div>
+
+<!-- ══════════ TRANSFERS ══════════ -->
+<div class="tab-section" id="tab-transfers">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Transfers Between Accounts</span>
+      <button class="btn btn-purple" onclick="openModal('trf')">⇄ New Transfer</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>From Account</th><th>To Account</th><th class="text-right">Amount (SAR)</th><th>Notes</th><th>Actions</th></tr></thead>
+      <tbody id="trf-tbody"></tbody>
+    </table></div>
+    <div id="trf-empty" class="empty" style="display:none;"><div class="empty-icon">🔄</div><div class="empty-title">No transfers yet</div></div>
+  </div>
+</div>
+
+<!-- ══════════ WEEKLY SCHEDULE ══════════ -->
+<div class="tab-section" id="tab-schedule">
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Weekly Schedule</span>
+      <div class="week-nav">
+        <button class="btn btn-outline btn-sm" onclick="changeWeek(-1)">◀</button>
+        <span class="week-title" id="week-label">—</span>
+        <button class="btn btn-outline btn-sm" onclick="changeWeek(1)">▶</button>
+        <button class="btn btn-outline btn-sm" onclick="goToday()">Today</button>
+      </div>
+    </div>
+    <div class="week-grid" id="week-grid"></div>
+  </div>
+</div>
+
+<!-- ══════════ IMPORT ══════════ -->
+<div class="tab-section" id="tab-import">
+  <div class="panel">
+    <div class="panel-header"><span class="panel-title">Import from Excel</span></div>
+    <div style="padding:18px 20px;">
+      <div class="template-note">
+        📋 <strong>Collections columns:</strong> Date · Source · Category · Amount · Notes · Status<br>
+        📋 <strong>Payments columns:</strong> Date · Vendor · Category · Amount · Notes · Recurring(yes/no) · Frequency · Approval
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+        <select id="import-type" style="padding:7px 10px;border:1px solid var(--gray-300);border-radius:7px;font-size:13px;">
+          <option value="collections">Collections</option>
+          <option value="payments">Payments</option>
+        </select>
+        <select id="import-account" style="padding:7px 10px;border:1px solid var(--gray-300);border-radius:7px;font-size:13px;"></select>
+        <button class="btn btn-outline" onclick="downloadTemplate()">⬇ Template</button>
+      </div>
+      <div class="import-area" onclick="document.getElementById('fileInput').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
+        <div class="import-icon">📁</div>
+        <div class="import-title">Drop .xlsx here or click to browse</div>
+        <div class="import-sub">Supports .xlsx and .xls</div>
+      </div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFileInput(event)">
+      <div id="preview-section" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <strong id="preview-title">Preview</strong>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline btn-sm" onclick="cancelImport()">Cancel</button>
+            <button class="btn btn-success" onclick="confirmImport()">✓ Import</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table id="preview-table"></table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- ══════════════ MODALS ══════════════ -->
+
+<!-- Account Modal -->
+<div class="modal-bg" id="acc-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="acc-modal-title">Add Account</h3><button class="modal-close" onclick="closeModal('acc')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="field"><label>Account Name *</label><input type="text" id="acc-name" placeholder="e.g. Operations Account"></div>
+        <div class="field"><label>Bank Name</label><input type="text" id="acc-bank" placeholder="e.g. Al Rajhi, SNB…"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Opening Balance (SAR)</label><input type="number" id="acc-opening" placeholder="0.00" min="0" step="0.01"></div>
+        <div class="field"><label>Account Number (last 4)</label><input type="text" id="acc-number" placeholder="e.g. 1234" maxlength="10"></div>
+      </div>
+      <div class="form-row single">
+        <div class="field"><label>Colour</label>
+          <select id="acc-color">
+            <option value="#1a56db">Blue</option><option value="#0d9f6e">Green</option>
+            <option value="#c27803">Yellow</option><option value="#7c3aed">Purple</option>
+            <option value="#db2777">Pink</option><option value="#0891b2">Teal</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('acc')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAccount()">Save Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- Transfer Modal -->
+<div class="modal-bg" id="trf-modal">
+  <div class="modal">
+    <div class="modal-head"><h3>New Transfer</h3><button class="modal-close" onclick="closeModal('trf')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="field"><label>From Account *</label><select id="trf-from"></select></div>
+        <div class="field"><label>To Account *</label><select id="trf-to"></select></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Amount (SAR) *</label><input type="number" id="trf-amount" placeholder="0.00" min="0.01" step="0.01"></div>
+        <div class="field"><label>Date *</label><input type="date" id="trf-date"></div>
+      </div>
+      <div class="form-row single">
+        <div class="field"><label>Notes</label><textarea id="trf-notes" placeholder="Optional…"></textarea></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('trf')">Cancel</button>
+      <button class="btn btn-purple" onclick="saveTransfer()">⇄ Transfer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Collection Modal -->
+<div class="modal-bg" id="col-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="col-modal-title">Add Collection</h3><button class="modal-close" onclick="closeModal('col')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="field"><label>Source / Client *</label><input type="text" id="col-source" placeholder="e.g. Acme Corp"></div>
+        <div class="field"><label>Account *</label><select id="col-account"></select></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Amount (SAR) *</label><input type="number" id="col-amount" placeholder="0.00" min="0" step="0.01"></div>
+        <div class="field"><label>Due Date *</label><input type="date" id="col-date"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Category</label><input type="text" id="col-category" placeholder="e.g. Invoice, Rental…"></div>
+        <div class="field"><label>Status</label><select id="col-status"><option value="pending">Pending</option><option value="received">Received</option><option value="overdue">Overdue</option></select></div>
+      </div>
+      <div class="form-row single"><div class="field"><label>Notes</label><textarea id="col-notes" placeholder="Optional…"></textarea></div></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('col')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCollection()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Payment Modal -->
+<div class="modal-bg" id="pay-modal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="pay-modal-title">Add Payment</h3><button class="modal-close" onclick="closeModal('pay')">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="field"><label>Vendor / Name *</label><input type="text" id="pay-vendor" placeholder="e.g. Saudi Electricity"></div>
+        <div class="field"><label>Account *</label><select id="pay-account"></select></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Amount (SAR) *</label><input type="number" id="pay-amount" placeholder="0.00" min="0" step="0.01"></div>
+        <div class="field"><label>Due Date *</label><input type="date" id="pay-date"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label>Category</label><input type="text" id="pay-category" placeholder="e.g. Utilities, Rent…"></div>
+        <div class="field"><label>Assigned To</label><input type="text" id="pay-assignee" placeholder="Team member…"></div>
+      </div>
+      <div class="toggle-row">
+        <button class="toggle" id="recurring-toggle" onclick="toggleRecurring()"></button>
+        <span class="toggle-label">Recurring Payment</span>
+      </div>
+      <div id="recurring-opts" style="display:none;margin-bottom:12px;">
+        <div class="form-row triple">
+          <div class="field"><label>Frequency</label><select id="pay-freq"><option value="weekly">Weekly</option><option value="biweekly">Bi-Weekly</option><option value="monthly" selected>Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select></div>
+          <div class="field"><label>Repeat Until</label><input type="date" id="pay-until"></div>
+          <div class="field"><label>Approval</label><select id="pay-approval"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div>
+        </div>
+      </div>
+      <div id="non-recurring-approval" class="form-row single">
+        <div class="field"><label>Approval Status</label><select id="pay-approval2"><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select></div>
+      </div>
+      <div class="form-row single"><div class="field"><label>Notes</label><textarea id="pay-notes" placeholder="Optional…"></textarea></div></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('pay')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePayment()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════
+//  STORE
+// ══════════════════════════════════════
+const SK = { ACC:'ft_accounts_v2', COL:'ft_collections_v2', PAY:'ft_payments_v2', TRF:'ft_transfers_v1' };
+const load = k => { try{ return JSON.parse(localStorage.getItem(k))||[]; }catch{ return []; }};
+const save = (k,d) => localStorage.setItem(k, JSON.stringify(d));
+
+let accounts    = load(SK.ACC);
+let collections = load(SK.COL);
+let payments    = load(SK.PAY);
+let transfers   = load(SK.TRF);
+
+// Seed default account if empty
+if (!accounts.length) {
+  accounts = [{ id:'acc1', name:'Main Account', bank:'Al Rajhi', openingBalance:0, number:'', color:'#1a56db' }];
+  save(SK.ACC, accounts);
+}
+
+// ══════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════
+let _id = Date.now();
+const uid = () => (++_id).toString(36);
+const fmt = n => 'SAR ' + Number(n||0).toLocaleString('en-SA',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtNum = n => Number(n||0).toLocaleString('en-SA',{minimumFractionDigits:2,maximumFractionDigits:2});
+const today = () => new Date().toISOString().slice(0,10);
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const accName = id => accounts.find(a=>a.id===id)?.name || '—';
+const accColor = id => accounts.find(a=>a.id===id)?.color || '#1a56db';
+const showToast = (msg,type='') => {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='show '+(type||'');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.className='',3000);
+};
+const closeAllModals = () => document.querySelectorAll('.modal-bg').forEach(m=>m.classList.remove('open'));
+
+// ══════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════
+function showTab(name){
+  document.querySelectorAll('.tab-section').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelector(`[onclick="showTab('${name}')"]`).classList.add('active');
+  if(name==='dashboard')   renderDashboard();
+  if(name==='statement')   renderStatement();
+  if(name==='collections') renderCollections();
+  if(name==='payments')    renderPayments();
+  if(name==='accounts')    renderAccounts();
+  if(name==='transfers')   renderTransfers();
+  if(name==='schedule')    renderSchedule();
+  if(name==='import')      refreshImportAccSelect();
+}
+
+// ══════════════════════════════════════
+//  ACCOUNT BALANCE CALCULATION
+// ══════════════════════════════════════
+function calcAccountBalance(accId) {
+  const acc = accounts.find(a=>a.id===accId);
+  if(!acc) return 0;
+  let bal = Number(acc.openingBalance||0);
+  // Add received collections
+  collections.filter(c=>c.accountId===accId).forEach(c=>{ bal+=Number(c.amount||0); });
+  // Subtract approved/pending payments
+  payments.filter(p=>p.accountId===accId&&p.approval!=='rejected').forEach(p=>{ bal-=Number(p.amount||0); });
+  // Transfers out
+  transfers.filter(t=>t.fromAccountId===accId).forEach(t=>{ bal-=Number(t.amount||0); });
+  // Transfers in
+  transfers.filter(t=>t.toAccountId===accId).forEach(t=>{ bal+=Number(t.amount||0); });
+  return bal;
+}
+
+function totalBalance() {
+  return accounts.reduce((s,a)=>s+calcAccountBalance(a.id),0);
+}
+
+// ══════════════════════════════════════
+//  POPULATE ACCOUNT DROPDOWNS
+// ══════════════════════════════════════
+function refreshAllDropdowns(){
+  const opts = accounts.map(a=>`<option value="${a.id}">${esc(a.name)} — ${esc(a.bank||'')}</option>`).join('');
+  const optAll = '<option value="">All Accounts</option>';
+  ['col-filter-acc','pay-filter-acc','stmt-account'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ const v=el.value; el.innerHTML=optAll+opts; el.value=v; }
+  });
+  ['col-account','pay-account'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.innerHTML=opts; if(!el.value&&accounts.length) el.value=accounts[0].id; }
+  });
+  ['trf-from','trf-to'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.innerHTML=opts; }
+  });
+}
+
+// ══════════════════════════════════════
+//  MODALS
+// ══════════════════════════════════════
+let editId={};
+
+function openModal(type, id){
+  refreshAllDropdowns();
+  editId[type]=id||null;
+  if(type==='acc'){
+    document.getElementById('acc-modal-title').textContent=id?'Edit Account':'Add Account';
+    const a=id?accounts.find(x=>x.id===id):null;
+    document.getElementById('acc-name').value=a?.name||'';
+    document.getElementById('acc-bank').value=a?.bank||'';
+    document.getElementById('acc-opening').value=a?.openingBalance||'';
+    document.getElementById('acc-number').value=a?.number||'';
+    document.getElementById('acc-color').value=a?.color||'#1a56db';
+  } else if(type==='trf'){
+    document.getElementById('trf-amount').value='';
+    document.getElementById('trf-date').value=today();
+    document.getElementById('trf-notes').value='';
+    if(accounts.length>=2){ document.getElementById('trf-from').value=accounts[0].id; document.getElementById('trf-to').value=accounts[1].id; }
+  } else if(type==='col'){
+    document.getElementById('col-modal-title').textContent=id?'Edit Collection':'Add Collection';
+    const c=id?collections.find(x=>x.id===id):null;
+    document.getElementById('col-source').value=c?.source||'';
+    document.getElementById('col-amount').value=c?.amount||'';
+    document.getElementById('col-date').value=c?.date||today();
+    document.getElementById('col-category').value=c?.category||'';
+    document.getElementById('col-status').value=c?.status||'pending';
+    document.getElementById('col-notes').value=c?.notes||'';
+    document.getElementById('col-account').value=c?.accountId||accounts[0]?.id||'';
+  } else if(type==='pay'){
+    document.getElementById('pay-modal-title').textContent=id?'Edit Payment':'Add Payment';
+    const p=id?payments.find(x=>x.id===id):null;
+    document.getElementById('pay-vendor').value=p?.vendor||'';
+    document.getElementById('pay-amount').value=p?.amount||'';
+    document.getElementById('pay-date').value=p?.date||today();
+    document.getElementById('pay-category').value=p?.category||'';
+    document.getElementById('pay-assignee').value=p?.assignee||'';
+    document.getElementById('pay-notes').value=p?.notes||'';
+    document.getElementById('pay-account').value=p?.accountId||accounts[0]?.id||'';
+    const isRec=!!p?.recurring;
+    document.getElementById('recurring-toggle').classList.toggle('on',isRec);
+    document.getElementById('recurring-opts').style.display=isRec?'block':'none';
+    document.getElementById('non-recurring-approval').style.display=isRec?'none':'block';
+    if(isRec){ document.getElementById('pay-freq').value=p.recFreq||'monthly'; document.getElementById('pay-until').value=p.recUntil||''; document.getElementById('pay-approval').value=p.approval||'pending'; }
+    else { document.getElementById('pay-approval2').value=p?.approval||'pending'; }
+  }
+  document.getElementById(type+'-modal').classList.add('open');
+}
+
+function closeModal(type){ document.getElementById(type+'-modal').classList.remove('open'); }
+
+// ══════════════════════════════════════
+//  ACCOUNTS CRUD
+// ══════════════════════════════════════
+function saveAccount(){
+  const name=document.getElementById('acc-name').value.trim();
+  if(!name){ showToast('Account name required','error'); return; }
+  const item={
+    id: editId.acc||uid(),
+    name,
+    bank: document.getElementById('acc-bank').value.trim(),
+    openingBalance: parseFloat(document.getElementById('acc-opening').value)||0,
+    number: document.getElementById('acc-number').value.trim(),
+    color: document.getElementById('acc-color').value
+  };
+  if(editId.acc){ const i=accounts.findIndex(x=>x.id===editId.acc); if(i>-1)accounts[i]=item; }
+  else accounts.push(item);
+  save(SK.ACC,accounts);
+  closeModal('acc');
+  refreshAllDropdowns();
+  renderAccounts();
+  refreshHeader();
+  showToast('Account saved ✓','success');
+}
+
+function deleteAccount(id){
+  const hasCol=collections.some(c=>c.accountId===id);
+  const hasPay=payments.some(p=>p.accountId===id);
+  const hasTrf=transfers.some(t=>t.fromAccountId===id||t.toAccountId===id);
+  if(hasCol||hasPay||hasTrf){ showToast('Cannot delete: account has linked transactions','error'); return; }
+  if(!confirm('Delete this account?')) return;
+  accounts=accounts.filter(a=>a.id!==id);
+  save(SK.ACC,accounts);
+  renderAccounts(); refreshAllDropdowns(); refreshHeader();
+  showToast('Deleted','error');
+}
+
+function renderAccounts(){
+  const area=document.getElementById('acc-list-area');
+  if(!accounts.length){ area.innerHTML='<div class="empty"><div class="empty-icon">🏦</div><div class="empty-title">No accounts yet</div></div>'; return; }
+  area.innerHTML=accounts.map(a=>{
+    const bal=calcAccountBalance(a.id);
+    const incoming=collections.filter(c=>c.accountId===a.id).reduce((s,c)=>s+Number(c.amount||0),0);
+    const outgoing=payments.filter(p=>p.accountId===a.id&&p.approval!=='rejected').reduce((s,p)=>s+Number(p.amount||0),0);
+    return `<div class="acc-card" style="border-top-color:${a.color};margin-bottom:14px;">
+      <div class="acc-card-bank">${esc(a.bank||'Bank')}${a.number?' ···'+esc(a.number):''}</div>
+      <div class="acc-card-name">${esc(a.name)}</div>
+      <div class="acc-card-row"><span>Opening Balance</span><span>${fmt(a.openingBalance)}</span></div>
+      <div class="acc-card-row"><span>Expected Collections</span><span style="color:var(--success)">${fmt(incoming)}</span></div>
+      <div class="acc-card-row"><span>Due Payments</span><span style="color:var(--danger)">${fmt(outgoing)}</span></div>
+      <div class="acc-card-balance ${bal<0?'negative':''}">${fmt(bal)}</div>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="openModal('acc','${a.id}')">Edit</button>
+        <button class="btn btn-danger" onclick="deleteAccount('${a.id}')">Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════
+//  TRANSFERS CRUD
+// ══════════════════════════════════════
+function saveTransfer(){
+  const fromId=document.getElementById('trf-from').value;
+  const toId=document.getElementById('trf-to').value;
+  const amount=parseFloat(document.getElementById('trf-amount').value);
+  const date=document.getElementById('trf-date').value;
+  if(!fromId||!toId||!amount||!date){ showToast('Fill all required fields','error'); return; }
+  if(fromId===toId){ showToast('From and To must be different accounts','error'); return; }
+  transfers.push({ id:uid(), fromAccountId:fromId, toAccountId:toId, amount, date, notes:document.getElementById('trf-notes').value.trim(), created:new Date().toISOString() });
+  save(SK.TRF,transfers);
+  closeModal('trf');
+  renderTransfers(); refreshHeader();
+  showToast('Transfer saved ✓','success');
+}
+
+function deleteTransfer(id){
+  if(!confirm('Delete this transfer?')) return;
+  transfers=transfers.filter(t=>t.id!==id);
+  save(SK.TRF,transfers); renderTransfers(); refreshHeader();
+  showToast('Deleted','error');
+}
+
+function renderTransfers(){
+  const tbody=document.getElementById('trf-tbody');
+  const empty=document.getElementById('trf-empty');
+  const list=[...transfers].sort((a,b)=>b.date.localeCompare(a.date));
+  if(!list.length){ tbody.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display='none';
+  tbody.innerHTML=list.map(t=>`
+    <tr>
+      <td>${t.date}</td>
+      <td><strong>${esc(accName(t.fromAccountId))}</strong></td>
+      <td><strong>${esc(accName(t.toAccountId))}</strong></td>
+      <td class="text-right" style="color:#7c3aed;font-weight:700;">${fmt(t.amount)}</td>
+      <td style="color:var(--gray-500);font-size:12px;">${esc(t.notes)||'—'}</td>
+      <td><button class="btn btn-danger" onclick="deleteTransfer('${t.id}')">Delete</button></td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════
+//  COLLECTIONS CRUD
+// ══════════════════════════════════════
+function saveCollection(){
+  const source=document.getElementById('col-source').value.trim();
+  const amount=parseFloat(document.getElementById('col-amount').value);
+  const date=document.getElementById('col-date').value;
+  const accountId=document.getElementById('col-account').value;
+  if(!source||!amount||!date){ showToast('Fill required fields','error'); return; }
+  const item={ id:editId.col||uid(), source, accountId, category:document.getElementById('col-category').value.trim(), amount, date, status:document.getElementById('col-status').value, notes:document.getElementById('col-notes').value.trim(), created:new Date().toISOString() };
+  if(editId.col){ const i=collections.findIndex(x=>x.id===editId.col); if(i>-1)collections[i]=item; }
+  else collections.push(item);
+  save(SK.COL,collections);
+  closeModal('col'); renderCollections(); refreshHeader();
+  showToast('Collection saved ✓','success');
+}
+
+function deleteCollection(id){
+  if(!confirm('Delete?')) return;
+  collections=collections.filter(x=>x.id!==id);
+  save(SK.COL,collections); renderCollections(); refreshHeader();
+}
+
+function renderCollections(){
+  const fAcc=document.getElementById('col-filter-acc').value;
+  const fSts=document.getElementById('col-filter-status').value;
+  const srch=document.getElementById('col-search').value.toLowerCase();
+  let list=collections.filter(c=>{
+    if(fAcc&&c.accountId!==fAcc) return false;
+    if(fSts&&c.status!==fSts) return false;
+    if(srch&&!JSON.stringify(c).toLowerCase().includes(srch)) return false;
+    return true;
+  }).sort((a,b)=>a.date.localeCompare(b.date));
+  const tbody=document.getElementById('col-tbody');
+  const empty=document.getElementById('col-empty');
+  if(!list.length){ tbody.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display='none';
+  tbody.innerHTML=list.map(c=>`
+    <tr>
+      <td>${c.date}</td>
+      <td><strong>${esc(c.source)}</strong></td>
+      <td><span style="color:${accColor(c.accountId)};font-weight:600;">${esc(accName(c.accountId))}</span></td>
+      <td>${esc(c.category)||'—'}</td>
+      <td class="text-right amt-in">${fmtNum(c.amount)}</td>
+      <td style="max-width:160px;color:var(--gray-500);font-size:12px;">${esc(c.notes)||'—'}</td>
+      <td><span class="status status-${c.status}">${c.status}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="openModal('col','${c.id}')">Edit</button>
+        <button class="btn btn-danger" onclick="deleteCollection('${c.id}')">Del</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════
+//  PAYMENTS CRUD
+// ══════════════════════════════════════
+function toggleRecurring(){
+  const tog=document.getElementById('recurring-toggle');
+  tog.classList.toggle('on');
+  const on=tog.classList.contains('on');
+  document.getElementById('recurring-opts').style.display=on?'block':'none';
+  document.getElementById('non-recurring-approval').style.display=on?'none':'block';
+}
+
+function savePayment(){
+  const vendor=document.getElementById('pay-vendor').value.trim();
+  const amount=parseFloat(document.getElementById('pay-amount').value);
+  const date=document.getElementById('pay-date').value;
+  const accountId=document.getElementById('pay-account').value;
+  if(!vendor||!amount||!date){ showToast('Fill required fields','error'); return; }
+  const isRec=document.getElementById('recurring-toggle').classList.contains('on');
+  const approval=isRec?document.getElementById('pay-approval').value:document.getElementById('pay-approval2').value;
+  const item={ id:editId.pay||uid(), vendor, accountId, category:document.getElementById('pay-category').value.trim(), amount, date, approval, assignee:document.getElementById('pay-assignee').value.trim(), notes:document.getElementById('pay-notes').value.trim(), recurring:isRec, recFreq:isRec?document.getElementById('pay-freq').value:null, recUntil:isRec?document.getElementById('pay-until').value:null, created:new Date().toISOString() };
+  if(editId.pay){ const i=payments.findIndex(x=>x.id===editId.pay); if(i>-1)payments[i]=item; }
+  else payments.push(item);
+  save(SK.PAY,payments);
+  closeModal('pay'); renderPayments(); refreshHeader(); refreshPayCatFilter();
+  showToast('Payment saved ✓','success');
+}
+
+function deletePayment(id){
+  if(!confirm('Delete?')) return;
+  payments=payments.filter(x=>x.id!==id);
+  save(SK.PAY,payments); renderPayments(); refreshHeader(); refreshPayCatFilter();
+}
+
+function setApproval(id,status){
+  const p=payments.find(x=>x.id===id);
+  if(!p) return;
+  p.approval=status;
+  save(SK.PAY,payments); renderPayments(); refreshHeader();
+  showToast(status==='approved'?'✅ Approved':'❌ Rejected',status==='approved'?'success':'error');
+}
+
+function renderPayments(){
+  const fAcc=document.getElementById('pay-filter-acc').value;
+  const fSts=document.getElementById('pay-filter-status').value;
+  const fCat=document.getElementById('pay-filter-cat').value;
+  const srch=document.getElementById('pay-search').value.toLowerCase();
+  let list=payments.filter(p=>{
+    if(fAcc&&p.accountId!==fAcc) return false;
+    if(fSts&&p.approval!==fSts) return false;
+    if(fCat&&p.category!==fCat) return false;
+    if(srch&&!JSON.stringify(p).toLowerCase().includes(srch)) return false;
+    return true;
+  }).sort((a,b)=>a.date.localeCompare(b.date));
+  const tbody=document.getElementById('pay-tbody');
+  const empty=document.getElementById('pay-empty');
+  if(!list.length){ tbody.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display='none';
+  tbody.innerHTML=list.map(p=>{
+    const recTag=p.recurring?`<span class="recurring-tag">🔄 ${p.recFreq||'rec'}</span>`:'—';
+    const approvalBtns=p.approval==='pending'
+      ?`<button class="btn btn-success btn-sm" onclick="setApproval('${p.id}','approved')">✓</button> <button class="btn btn-danger" onclick="setApproval('${p.id}','rejected')">✕</button>`
+      :`<span class="status status-${p.approval}">${p.approval}</span>`;
+    return `<tr>
+      <td>${p.date}</td>
+      <td><strong>${esc(p.vendor)}</strong>${p.assignee?`<br><span style="font-size:11px;color:var(--gray-500)">→ ${esc(p.assignee)}</span>`:''}</td>
+      <td><span style="color:${accColor(p.accountId)};font-weight:600;">${esc(accName(p.accountId))}</span></td>
+      <td>${esc(p.category)||'—'}</td>
+      <td class="text-right amt-out">${fmtNum(p.amount)}</td>
+      <td>${recTag}</td>
+      <td style="max-width:130px;color:var(--gray-500);font-size:12px;">${esc(p.notes)||'—'}</td>
+      <td style="white-space:nowrap;">${approvalBtns}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="openModal('pay','${p.id}')">Edit</button>
+        <button class="btn btn-danger" onclick="deletePayment('${p.id}')">Del</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function refreshPayCatFilter(){
+  const cats=[...new Set(payments.map(p=>p.category).filter(Boolean))].sort();
+  const sel=document.getElementById('pay-filter-cat');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  if(cats.includes(cur)) sel.value=cur;
+}
+
+// ══════════════════════════════════════
+//  STATEMENT VIEW
+// ══════════════════════════════════════
+function clearStmtFilters(){
+  document.getElementById('stmt-account').value='';
+  document.getElementById('stmt-from').value='';
+  document.getElementById('stmt-to').value='';
+  renderStatement();
+}
+
+function renderStatement(){
+  const fAcc=document.getElementById('stmt-account').value;
+  const fFrom=document.getElementById('stmt-from').value;
+  const fTo=document.getElementById('stmt-to').value;
+
+  // Opening balance
+  let openingBal = fAcc
+    ? Number(accounts.find(a=>a.id===fAcc)?.openingBalance||0)
+    : accounts.reduce((s,a)=>s+Number(a.openingBalance||0),0);
+
+  // Build transaction list
+  let txns=[];
+
+  // Collections
+  collections
+    .filter(c=>!fAcc||c.accountId===fAcc)
+    .filter(c=>!fFrom||c.date>=fFrom)
+    .filter(c=>!fTo||c.date<=fTo)
+    .forEach(c=>txns.push({ date:c.date, type:'in', desc:c.source, account:accName(c.accountId), amount:Number(c.amount||0), status:c.status }));
+
+  // Payments (approved or pending — not rejected)
+  payments
+    .filter(p=>!fAcc||p.accountId===fAcc)
+    .filter(p=>p.approval!=='rejected')
+    .filter(p=>!fFrom||p.date>=fFrom)
+    .filter(p=>!fTo||p.date<=fTo)
+    .forEach(p=>txns.push({ date:p.date, type:'out', desc:p.vendor, account:accName(p.accountId), amount:Number(p.amount||0), status:p.approval }));
+
+  // Transfers
+  transfers
+    .filter(t=>!fFrom||t.date>=fFrom)
+    .filter(t=>!fTo||t.date<=fTo)
+    .forEach(t=>{
+      if(!fAcc||t.fromAccountId===fAcc) txns.push({ date:t.date, type:'out', desc:'Transfer → '+accName(t.toAccountId), account:accName(t.fromAccountId), amount:Number(t.amount||0), status:'transfer' });
+      if(!fAcc||t.toAccountId===fAcc)   txns.push({ date:t.date, type:'in',  desc:'Transfer ← '+accName(t.fromAccountId), account:accName(t.toAccountId),   amount:Number(t.amount||0), status:'transfer' });
+      // Avoid double-counting when showing all accounts
+      if(!fAcc){ // remove the last entry to not double count on "all"
+        txns.pop();
+      }
+    });
+
+  txns.sort((a,b)=>a.date.localeCompare(b.date)||(a.type==='in'?-1:1));
+
+  // Group by date
+  const grouped={};
+  txns.forEach(t=>{ if(!grouped[t.date]) grouped[t.date]=[]; grouped[t.date].push(t); });
+
+  const tbody=document.getElementById('stmt-tbody');
+  const empty=document.getElementById('stmt-empty');
+
+  let html='';
+  let balance=openingBal;
+
+  // Opening balance row
+  html+=`<tr class="stmt-opening">
+    <td colspan="2"><strong>Opening Balance</strong></td>
+    <td class="text-right"><strong>${fmtNum(openingBal)}</strong></td>
+    <td></td>
+    <td class="text-right"><strong>${fmtNum(openingBal)}</strong></td>
+    <td></td>
+  </tr>`;
+
+  const dates=Object.keys(grouped).sort();
+  if(!dates.length && txns.length===0){ empty.style.display=''; tbody.innerHTML=html; return; }
+  empty.style.display='none';
+
+  dates.forEach(date=>{
+    const dayTxns=grouped[date];
+    let dayIn=0,dayOut=0;
+    dayTxns.forEach(t=>{
+      if(t.type==='in'){
+        balance+=t.amount; dayIn+=t.amount;
+        html+=`<tr class="stmt-in">
+          <td>${esc(t.desc)}</td>
+          <td style="font-size:12px;">${esc(t.account)}</td>
+          <td class="text-right">${fmtNum(t.amount)}</td>
+          <td></td><td></td>
+          <td><span class="status status-${esc(t.status)}">${t.status}</span></td>
+        </tr>`;
+      } else {
+        balance-=t.amount; dayOut+=t.amount;
+        html+=`<tr class="stmt-out">
+          <td>${esc(t.desc)}</td>
+          <td style="font-size:12px;">${esc(t.account)}</td>
+          <td></td>
+          <td class="text-right">${fmtNum(t.amount)}</td>
+          <td></td>
+          <td><span class="status status-${esc(t.status)}">${t.status}</span></td>
+        </tr>`;
+      }
+    });
+    const balCls=balance<0?'bal-negative':balance<openingBal*0.1?'bal-low':'bal-ok';
+    html+=`<tr class="stmt-total">
+      <td colspan="2"><strong>Total on ${date}</strong></td>
+      <td class="text-right">${dayIn?fmtNum(dayIn):''}</td>
+      <td class="text-right">${dayOut?fmtNum(dayOut):''}</td>
+      <td class="text-right ${balCls}"><strong>${fmtNum(balance)}</strong></td>
+      <td>${balance<0?'<span style="color:var(--danger);font-weight:700;">⚠ Deficit</span>':'<span style="color:var(--success);">✓</span>'}</td>
+    </tr>`;
+  });
+  tbody.innerHTML=html;
+}
+
+function exportStatement(){
+  const rows=[['Description','Account','IN (SAR)','OUT (SAR)','Balance (SAR)','Status']];
+  document.querySelectorAll('#stmt-tbody tr').forEach(tr=>{
+    const cells=[...tr.querySelectorAll('td')].map(td=>td.innerText.replace(/\n/g,' ').trim());
+    rows.push(cells);
+  });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'Statement');
+  XLSX.writeFile(wb,'statement_export.xlsx');
+  showToast('Exported ✓','success');
+}
+
+let cashChart,catChart;
+
+function renderDashboard(){
+  const accDiv=document.getElementById('acc-cards-dash');
+  accDiv.innerHTML=accounts.map(a=>{
+    const bal=calcAccountBalance(a.id);
+    return `<div class="acc-card" style="border-top-color:${a.color};">
+      <div class="acc-card-bank">${esc(a.bank||'Bank')}</div>
+      <div class="acc-card-name">${esc(a.name)}</div>
+      <div class="acc-card-balance ${bal<0?'negative':''}">${fmt(bal)}</div>
+    </div>`;
+  }).join('');
+
+  const totalCol=collections.reduce((s,c)=>s+Number(c.amount||0),0);
+  const received=collections.filter(c=>c.status==='received').reduce((s,c)=>s+Number(c.amount),0);
+  const totalPay=payments.filter(p=>p.approval!=='rejected').reduce((s,p)=>s+Number(p.amount||0),0);
+  const pendingN=payments.filter(p=>p.approval==='pending').length;
+  const net=totalCol-totalPay;
+
+  document.getElementById('dc-col').textContent=fmt(totalCol);
+  document.getElementById('dc-col-c').textContent=collections.length+' items';
+  document.getElementById('dc-recv').textContent=fmt(received);
+  document.getElementById('dc-recv-c').textContent=collections.filter(c=>c.status==='received').length+' received';
+  document.getElementById('dc-pay').textContent=fmt(totalPay);
+  document.getElementById('dc-pay-c').textContent=payments.length+' items';
+  document.getElementById('dc-pend').textContent=pendingN;
+  document.getElementById('dc-net').textContent=fmt(net);
+  document.getElementById('dc-net').style.color=net>=0?'var(--success)':'var(--danger)';
+
+  const totalBal=totalBalance();
+  const pct=totalPay>0?Math.min(100,Math.round(totalBal/totalPay*100)):100;
+  document.getElementById('coverage-area').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+      <div>
+        <div style="font-size:12px;color:var(--gray-500);margin-bottom:4px;">Total Bank Balance</div>
+        <div style="font-size:20px;font-weight:700;color:${totalBal>=0?'var(--success)':'var(--danger)'};">${fmt(totalBal)}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--gray-500);margin-bottom:4px;">Total Payments Due</div>
+        <div style="font-size:20px;font-weight:700;color:var(--danger);">${fmt(totalPay)}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--gray-500);margin-bottom:4px;">Balance After Payments</div>
+        <div style="font-size:20px;font-weight:700;color:${(totalBal-totalPay)>=0?'var(--success)':'var(--danger)'};">${fmt(totalBal-totalPay)}</div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--gray-500);margin-bottom:4px;">Coverage Ratio</div>
+        <div style="font-size:20px;font-weight:700;color:${pct>=80?'var(--success)':pct>=40?'var(--warning)':'var(--danger)'};">${pct}%</div>
+        <div class="coverage-bar" style="margin-top:8px;"><div class="coverage-fill ${pct>=80?'':pct>=40?'low':'critical'}" style="width:${pct}%"></div></div>
+        <div style="font-size:11px;color:var(--gray-500);margin-top:4px;">${pct>=100?'✅ Balance fully covers payments':pct>=80?'✅ Good coverage':pct>=40?'⚠️ Partial coverage':'🔴 Insufficient'}</div>
+      </div>
+    </div>`;
+
+  const t=new Date(); t.setHours(0,0,0,0);
+  const t7=new Date(t); t7.setDate(t7.getDate()+7);
+  const upcoming=[
+    ...collections.filter(c=>{const d=new Date(c.date);return d>=t&&d<=t7;}).map(c=>({date:c.date,type:'Collection',name:c.source,account:accName(c.accountId),amount:c.amount,status:c.status})),
+    ...payments.filter(p=>{const d=new Date(p.date);return d>=t&&d<=t7;}).map(p=>({date:p.date,type:'Payment',name:p.vendor,account:accName(p.accountId),amount:p.amount,status:p.approval}))
+  ].sort((a,b)=>a.date.localeCompare(b.date));
+  const uTbody=document.getElementById('upcoming-tbody');
+  if(!upcoming.length){ uTbody.innerHTML='<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--gray-500);">Nothing due in the next 7 days</td></tr>'; }
+  else uTbody.innerHTML=upcoming.map(u=>`<tr>
+    <td>${u.date}</td>
+    <td><span class="status ${u.type==='Collection'?'status-received':'status-rejected'}">${u.type}</span></td>
+    <td><strong>${esc(u.name)}</strong></td>
+    <td><small style="color:var(--gray-500)">${esc(u.account)}</small></td>
+    <td class="${u.type==='Collection'?'amt-in':'amt-out'} text-right">${fmt(u.amount)}</td>
+    <td><span class="status status-${u.status}">${u.status}</span></td>
+  </tr>`).join('');
+  renderCashChart(); renderCatChart();
+}
+
+function renderCashChart(){
+  const ctx=document.getElementById('cashflowChart').getContext('2d');
+  if(cashChart) cashChart.destroy();
+  const months={};
+  collections.forEach(c=>{const m=c.date.slice(0,7);months[m]=months[m]||{col:0,pay:0};months[m].col+=Number(c.amount);});
+  payments.forEach(p=>{const m=p.date.slice(0,7);months[m]=months[m]||{col:0,pay:0};months[m].pay+=Number(p.amount);});
+  const labels=Object.keys(months).sort();
+  cashChart=new Chart(ctx,{type:'bar',data:{labels:labels.length?labels:['No Data'],datasets:[{label:'Collections',data:labels.map(l=>months[l].col),backgroundColor:'#0d9f6e'},{label:'Payments',data:labels.map(l=>months[l].pay),backgroundColor:'#e02424'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true}}}});
+}
+
+function renderCatChart(){
+  const ctx=document.getElementById('categoryChart').getContext('2d');
+  if(catChart) catChart.destroy();
+  const cats={};
+  payments.forEach(p=>{const c=p.category||'Uncategorized';cats[c]=(cats[c]||0)+Number(p.amount);});
+  const labels=Object.keys(cats);
+  catChart=new Chart(ctx,{type:'doughnut',data:{labels:labels.length?labels:['No payments'],datasets:[{data:labels.length?labels.map(l=>cats[l]):[1],backgroundColor:['#1a56db','#0d9f6e','#c27803','#e02424','#7c3aed','#db2777','#0891b2','#65a30d']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+}
+
+function refreshHeader(){
+  const pending=payments.filter(p=>p.approval==='pending').length;
+  document.getElementById('pendingBadge').textContent=pending+' Pending';
+  const bal=totalBalance();
+  document.getElementById('totalBalancePill').textContent=fmt(bal);
+  document.getElementById('totalBalancePill').style.background=bal>=0?'var(--success-light)':'var(--danger-light)';
+  document.getElementById('totalBalancePill').style.color=bal>=0?'var(--success)':'var(--danger)';
+}
+
+let weekOffset=0;
+function changeWeek(d){weekOffset+=d;renderSchedule();}
+function goToday(){weekOffset=0;renderSchedule();}
+
+function getExpandedPayments(){
+  const all=[...payments];
+  const horizon=new Date(); horizon.setMonth(horizon.getMonth()+3);
+  payments.filter(p=>p.recurring&&p.recFreq&&p.recUntil).forEach(p=>{
+    const until=new Date(p.recUntil);
+    let d=new Date(p.date); let count=0;
+    while(d<=until&&d<=horizon&&count++<500){
+      if(p.recFreq==='weekly') d.setDate(d.getDate()+7);
+      else if(p.recFreq==='biweekly') d.setDate(d.getDate()+14);
+      else if(p.recFreq==='monthly') d.setMonth(d.getMonth()+1);
+      else if(p.recFreq==='quarterly') d.setMonth(d.getMonth()+3);
+      else if(p.recFreq==='yearly') d.setFullYear(d.getFullYear()+1);
+      const ds=d.toISOString().slice(0,10);
+      if(ds!==p.date) all.push({...p,id:p.id+'-'+ds,date:ds,_virtual:true});
+    }
+  });
+  return all;
+}
+
+function renderSchedule(){
+  const now=new Date(); now.setHours(0,0,0,0);
+  const start=new Date(now); start.setDate(start.getDate()-now.getDay()+weekOffset*7);
+  document.getElementById('week-label').textContent=
+    start.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' – '+
+    new Date(start.getTime()+6*864e5).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const allPay=getExpandedPayments();
+  const todayStr=now.toISOString().slice(0,10);
+  let html='';
+  for(let i=0;i<7;i++){
+    const d=new Date(start); d.setDate(d.getDate()+i);
+    const ds=d.toISOString().slice(0,10);
+    html+=`<div class="day-col"><div class="day-header">${days[i]}</div>
+      <div class="${ds===todayStr?'day-date today':'day-date'}">${d.getDate()}</div>`;
+    collections.filter(c=>c.date===ds).forEach(c=>{html+=`<div class="day-item collection"><div class="item-name" style="color:var(--success)">${esc(c.source)}</div><div class="item-amount" style="color:var(--success)">+${fmtNum(c.amount)}</div></div>`;});
+    allPay.filter(p=>p.date===ds).forEach(p=>{html+=`<div class="day-item payment"><div class="item-name">${p.recurring?'🔄 ':''}${esc(p.vendor)}</div><div class="item-amount" style="color:var(--danger)">-${fmtNum(p.amount)}</div></div>`;});
+    transfers.filter(t=>t.date===ds).forEach(t=>{html+=`<div class="day-item transfer"><div class="item-name">⇄ ${esc(accName(t.fromAccountId))}→${esc(accName(t.toAccountId))}</div><div class="item-amount" style="color:#7c3aed">${fmtNum(t.amount)}</div></div>`;});
+    html+='</div>';
+  }
+  document.getElementById('week-grid').innerHTML=html;
+}
+
+let pendingImport=[];
+function refreshImportAccSelect(){const sel=document.getElementById('import-account');if(sel)sel.innerHTML=accounts.map(a=>`<option value="${a.id}">${esc(a.name)}</option>`).join('');}
+function handleFileInput(e){processFile(e.target.files[0]);}
+function handleDrop(e){e.preventDefault();document.querySelector('.import-area').classList.remove('drag');processFile(e.dataTransfer.files[0]);}
+
+function processFile(file){
+  if(!file) return;
+  const type=document.getElementById('import-type').value;
+  const accountId=document.getElementById('import-account').value;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(rows.length<2){showToast('File appears empty','error');return;}
+      pendingImport=rows.slice(1).filter(r=>r.some(c=>c!=='')).map(r=>{
+        const get=i=>r[i]!=null?String(r[i]).trim():'';
+        const getNum=i=>{const v=parseFloat(get(i));return isNaN(v)?0:v;};
+        const getDate=i=>{const v=r[i];if(v instanceof Date)return v.toISOString().slice(0,10);const s=get(i);if(/^\d{4}-\d{2}-\d{2}$/.test(s))return s;if(s){const d=new Date(s);if(!isNaN(d))return d.toISOString().slice(0,10);}return today();};
+        if(type==='collections') return {id:uid(),accountId,date:getDate(0),source:get(1),category:get(2),amount:getNum(3),notes:get(4),status:(get(5)||'pending').toLowerCase(),created:new Date().toISOString()};
+        const isRec=get(5).toLowerCase()==='yes';
+        return {id:uid(),accountId,date:getDate(0),vendor:get(1),category:get(2),amount:getNum(3),notes:get(4),recurring:isRec,recFreq:isRec?get(6)||'monthly':null,recUntil:null,approval:(get(7)||'pending').toLowerCase(),assignee:'',created:new Date().toISOString()};
+      });
+      const cols=type==='collections'?['date','source','category','amount','notes','status']:['date','vendor','category','amount','notes','recurring','recFreq','approval'];
+      const table=document.getElementById('preview-table');
+      document.getElementById('preview-title').textContent=`Preview: ${pendingImport.length} rows (${type})`;
+      table.innerHTML=`<thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${pendingImport.slice(0,20).map(r=>`<tr>${cols.map(c=>`<td>${esc(r[c])}</td>`).join('')}</tr>`).join('')}</tbody>`;
+      document.getElementById('preview-section').style.display='block';
+    }catch(err){showToast('Error: '+err.message,'error');}
+  };
+  reader.readAsBinaryString(file);
+}
+
+function cancelImport(){pendingImport=[];document.getElementById('preview-section').style.display='none';document.getElementById('fileInput').value='';}
+
+function confirmImport(){
+  const type=document.getElementById('import-type').value;
+  if(type==='collections'){collections=[...collections,...pendingImport];save(SK.COL,collections);}
+  else{payments=[...payments,...pendingImport];save(SK.PAY,payments);refreshPayCatFilter();}
+  refreshHeader();
+  showToast('Imported '+pendingImport.length+' '+type,'success');
+  cancelImport();
+}
+
+function downloadTemplate(){
+  const type=document.getElementById('import-type').value;
+  const wb=XLSX.utils.book_new();
+  let ws;
+  if(type==='collections') ws=XLSX.utils.aoa_to_sheet([['Date','Source','Category','Amount (SAR)','Notes','Status'],['2024-08-01','Acme Corp','Invoice',15000,'Project Alpha','pending']]);
+  else ws=XLSX.utils.aoa_to_sheet([['Date','Vendor','Category','Amount (SAR)','Notes','Recurring(yes/no)','Frequency','Approval'],['2024-08-05','Saudi Electricity','Utilities',4200,'','yes','monthly','pending']]);
+  XLSX.utils.book_append_sheet(wb,ws,type);
+  XLSX.writeFile(wb,'template_'+type+'.xlsx');
+  showToast('Downloaded','success');
+}
+
+document.querySelectorAll('.modal-bg').forEach(bg=>bg.addEventListener('click',e=>{if(e.target===bg)bg.classList.remove('open');}));
+
+(function init(){
+  refreshAllDropdowns();
+  refreshPayCatFilter();
+  refreshImportAccSelect();
+  refreshHeader();
+  renderDashboard();
+})();
+</script>
+</body>
+</html>
